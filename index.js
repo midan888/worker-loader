@@ -12,10 +12,11 @@ const getWorker = (file, content, query) => {
     const fallbackWorkerPath = query.fallback === false ? 'null' : workerPublicPath;
     return `require(${createInlineWorkerPath})(${JSON.stringify(content)}, ${fallbackWorkerPath})`;
   }
-  return `new Worker(${workerPublicPath})`;
+  return workerPublicPath;
 };
 
-module.exports = function workerLoader() {};
+module.exports = function workerLoader() {
+};
 
 module.exports.pitch = function pitch(request) {
   if (!this.webpack) throw new Error('Only usable with webpack');
@@ -55,10 +56,14 @@ module.exports.pitch = function pitch(request) {
     if (err) return callback(err);
     if (entries[0]) {
       const workerFile = entries[0].files[0];
+      if (query.filePathOnly) {
+        return callback(null, `module.exports = '${workerFile}';`);
+      }
       const workerFactory = getWorker(workerFile, compilation.assets[workerFile].source(), query);
       if (query.fallback === false) {
         delete this._compilation.assets[workerFile];
       }
+
       return callback(null, `module.exports = function() {\n\treturn ${workerFactory};\n};`);
     }
     return callback(null, null);
